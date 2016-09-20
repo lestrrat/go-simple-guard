@@ -1,7 +1,7 @@
 package guard
 
 /*
-package guard provides a simple construct to help you write a RAII-like
+Package guard provides a simple construct to help you write a RAII-like
 construct in Go.
 
 Go doesn't provide a deterministic way to fire code at garbage collection
@@ -61,7 +61,7 @@ easier:
 
 	func DatabaseOperation(db *sql.DB) {
 		tx := db.Begin()
-		g := guard.NewCB(func() error {
+		g := guard.Callback(func() error {
 			return tx.Rollback()
 		})
 		defer g.Fire()
@@ -85,50 +85,31 @@ Please also see: https://github.com/lestrrat/go-tx-guard
 
 */
 
-import "errors"
-
-// Guard is the interface for all guards. Most of your code should
-// probably specify this as either return type or variable type.
-type Guard interface {
-	Fire() error
-	Cancel() error
-}
-
-// ErrFired is returned if the guard has already been fired.
-var ErrFired = errors.New("guard has already been fired")
-
-// ErrCanceled is returned if the guard has already been canceled.
-var ErrCanceled = errors.New("guard has already been canceled")
-
-// Nil is a special guard that does nothing. Use it in tests or
-// when you just need to pass a dummy guard to fulfill some function call.
-var Nil nilGuard
-
-type nilGuard struct{}
-
 func (ng nilGuard) Fire() error   { return nil }
 func (ng nilGuard) Cancel() error { return nil }
 
-const (
-	stFired    = 0x001
-	stCanceled = 0x010
-)
-
-// CB is the most generic guard type, one that executes the given callback.
-// While it's probably not a great thing to do, you can set the `OnFire`
-// attribute at any given point to change the callback. You cannot
-// recalibrate the guard so that it fires again.
-type CB struct {
-	state  int8
-	OnFire func() error
+// Callback creates a new callback based guard.
+func Callback(onFire func() error) *CB {
+	return &CB{
+		onFire: onFire,
+	}
 }
 
-// NewCB creates a new callback based guard.
+// NewCB is a deprecated constructor. Please use `Callback`
 func NewCB(onFire func() error) *CB {
-	return &CB{
-		state:  0,
-		OnFire: onFire,
-	}
+	return Callback(onFire)
+}
+
+func (c *CB) matchState(st int8) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return c.state&st == st
+}
+
+func (c *CB) setState(st int8) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.state = c.state ^ st
 }
 
 // Fire executes the registered callback, only if the guard has not
@@ -136,15 +117,15 @@ func NewCB(onFire func() error) *CB {
 // nil if the callback successfully fired, and the callback did not
 // return any errors.
 func (c *CB) Fire() error {
-	if c.state & stCanceled == stCanceled {
-		return ErrCanceled
+	if c.matchState(stCanceled) {
+		return errCanceled
 	}
-	if c.state & stFired == stFired {
-		return ErrFired
+	if c.matchState(stFired) {
+		return errFired
 	}
 
-	defer func() { c.state = c.state ^ stFired }()
-	if cb := c.OnFire; cb != nil {
+	defer c.setState(stFired)
+	if cb := c.onFire; cb != nil {
 		return cb()
 	}
 	return nil
@@ -154,13 +135,13 @@ func (c *CB) Fire() error {
 // does not cause the callback to execute. It will return errors
 // if the guard has already been fired or canceled.
 func (c *CB) Cancel() error {
-	if c.state & stCanceled == stCanceled {
-		return ErrCanceled
+	if c.matchState(stCanceled) {
+		return errCanceled
 	}
-	if c.state & stFired == stFired {
-		return ErrFired
+	if c.matchState(stFired) {
+		return errFired
 	}
 
-	c.state = c.state ^ stCanceled
+	c.setState(stCanceled)
 	return nil
 }
