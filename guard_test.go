@@ -1,46 +1,48 @@
-package guard
+package guard_test
 
 import (
-  "fmt"
-  "sync"
-  "testing"
+	"fmt"
+	"sync"
+	"testing"
+
+	guard "github.com/lestrrat/go-simple-guard"
 )
 
-func fireGuard(g Guard) (err error) {
-  defer func() {
-    if e := recover(); e != nil {
-      if errconv, ok := e.(error); ok {
-        err = errconv
-        return
-      }
+func fireGuard(g guard.Guard) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			if errconv, ok := e.(error); ok {
+				err = errconv
+				return
+			}
 
-      err = fmt.Errorf("%s", e)
-      return
-    }
-  }()
-  defer g.Fire()
-  return
+			err = fmt.Errorf("%s", e)
+			return
+		}
+	}()
+	defer g.Fire()
+	return
 }
 
 func TestNilGuard(t *testing.T) {
-  wg := &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
-  for i := 0; i < 100; i++ {
-    wg.Add(1)
-    go func() {
-      defer wg.Done()
-      if err := fireGuard(Nil); err != nil {
-        t.Errorf("Nil guard fire failed: %s", err)
-      }
-    }()
-  }
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := fireGuard(guard.Nil); err != nil {
+				t.Errorf("Nil guard fire failed: %s", err)
+			}
+		}()
+	}
 
-  wg.Wait()
+	wg.Wait()
 }
 
 func TestDoubleFire(t *testing.T) {
 	called := 0
-	g := NewCB(func() error {
+	g := guard.Callback(func() error {
 		called++
 		return nil
 	})
@@ -62,8 +64,8 @@ func TestDoubleFire(t *testing.T) {
 				continue
 			}
 
-			if err != ErrFired {
-				t.Errorf("first g.Fire() should return ErrFired on subsequent invocation")
+			if !guard.IsFiredError(err) {
+				t.Errorf("first g.Fire() should return 'already fired' on subsequent invocation")
 				t.Logf("Got %s", err)
 			}
 		}
@@ -72,7 +74,7 @@ func TestDoubleFire(t *testing.T) {
 
 func TestDoubleCancel(t *testing.T) {
 	called := 0
-	g := NewCB(func() error {
+	g := guard.Callback(func() error {
 		called++
 		return nil
 	})
@@ -89,7 +91,7 @@ func TestDoubleCancel(t *testing.T) {
 				continue
 			}
 
-			if err != ErrCanceled {
+			if !guard.IsCanceledError(err) {
 				t.Errorf("first g.Cancel() should return ErrCanceled on subsequent invocation")
 				t.Logf("Got %s", err)
 			}
