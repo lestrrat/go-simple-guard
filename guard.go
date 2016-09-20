@@ -1,5 +1,4 @@
-/*
-Package guard provides a simple construct to help you write a RAII-like
+/* Package guard provides a simple construct to help you write a RAII-like
 construct in Go.
 
 Go doesn't provide a deterministic way to fire code at garbage collection
