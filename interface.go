@@ -1,9 +1,6 @@
 package guard
 
-import (
-	"errors"
-	"sync"
-)
+import "sync"
 
 // Guard is the interface for all guards. Most of your code should
 // probably specify this as either return type or variable type.
@@ -14,6 +11,7 @@ type Guard interface {
 
 type guardFiredErr struct{}
 type guardCanceledErr struct{}
+
 var (
 	errFired    = guardFiredErr{}
 	errCanceled = guardCanceledErr{}
@@ -34,12 +32,6 @@ func (_ guardCanceledErr) Canceled() bool {
 func (_ guardCanceledErr) Error() string {
 	return "guard has already been canceled"
 }
-
-// ErrFired is returned if the guard has already been fired.
-var ErrFired = errors.New("guard has already been fired")
-
-// ErrCanceled is returned if the guard has already been canceled.
-var ErrCanceled = errors.New("guard has already been canceled")
 
 // Nil is a special guard that does nothing. Use it in tests or
 // when you just need to pass a dummy guard to fulfill some function call.
