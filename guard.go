@@ -1,5 +1,3 @@
-package guard
-
 /*
 Package guard provides a simple construct to help you write a RAII-like
 construct in Go.
@@ -84,6 +82,7 @@ you can safely use it both in the success and failure cases.
 Please also see: https://github.com/lestrrat/go-tx-guard
 
 */
+package guard
 
 func (ng nilGuard) Fire() error   { return nil }
 func (ng nilGuard) Cancel() error { return nil }
