@@ -6,6 +6,11 @@ Simple guard construct
 
 [![GoDoc](https://godoc.org/github.com/lestrrat/go-simple-guard?status.svg)](https://godoc.org/github.com/lestrrat/go-simple-guard)
 
+
+# WARNING
+
+This repository has been moved to [github.com/lestrrat-go/simple-guard](https://github.com/lestrrat-go/simple-guard). This repository exists so that libraries pointing to this URL will keep functioning, but this repository will NOT be updated in the future. Please use the new import path.
+
 # SYNOPSIS
 
 ```go
